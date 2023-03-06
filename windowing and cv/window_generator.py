@@ -1,22 +1,20 @@
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 import tensorflow as tf
-import IPython
-import IPython.display
-import matplotlib as mpl
-import seaborn as sns
-
-
+from tscv_sliding import TimeSeriesSplitSliding
 
 class WindowGenerator():
   def __init__(self, input_width, label_width, shift,
-               train_df=train_df, val_df=val_df, test_df=test_df,
-               label_columns=None):
+               train_df=None, val_df=None, test_df=None,
+               label_columns=None, n_splits=5, train_splits=3, test_splits=1):
+    
     # Store the raw data.
     self.train_df = train_df
     self.val_df = val_df
     self.test_df = test_df
+    self.n_splits = n_splits
+    self.train_splits = train_splits
+    self.test_splits = test_splits
 
     # Work out the label column indices.
     self.label_columns = label_columns
@@ -40,6 +38,7 @@ class WindowGenerator():
     self.labels_slice = slice(self.label_start, None)
     self.label_indices = np.arange(self.total_window_size)[self.labels_slice]
 
+
   def __repr__(self):
     return '\n'.join([
         f'Total window size: {self.total_window_size}',
@@ -62,8 +61,6 @@ class WindowGenerator():
 
     return inputs, labels
 
-  WindowGenerator.split_window = split_window
-
   def make_dataset(self, data):
     data = np.array(data, dtype=np.float32)
     ds = tf.keras.utils.timeseries_dataset_from_array(
@@ -77,9 +74,7 @@ class WindowGenerator():
     ds = ds.map(self.split_window)
 
     return ds
-
-  WindowGenerator.make_dataset = make_dataset
-
+  
   @property
   def train(self):
     return self.make_dataset(self.train_df)
@@ -93,6 +88,22 @@ class WindowGenerator():
     return self.make_dataset(self.test_df)
 
   @property
+  def folds(self):
+    '''
+    Create datasets for time series sliding window cross validation
+    '''
+    tscv = TimeSeriesSplitSliding(n_splits=self.n_splits, train_splits=self.train_splits,
+                                  test_splits=self.n_splits, fixed_length=True)
+    cv_indices = tscv.split(self.train_df)
+    cv_folds = []
+    for i in range(self.n_splits):
+      train_indices, val_indices = next(cv_indices)
+      train = self.train_df.iloc[train_indices]
+      val = self.train_df.iloc[val_indices]
+      cv_folds.append([self.make_dataset(train), self.make_dataset(val)])
+    return np.array(cv_folds).reshape((self.n_splits, 2))
+
+  @property
   def example(self):
     """Get and cache an example batch of `inputs, labels` for plotting."""
     result = getattr(self, '_example', None)
@@ -102,42 +113,22 @@ class WindowGenerator():
       # And cache it for next time
       self._example = result
     return result
+  
 
-  WindowGenerator.train = train
-  WindowGenerator.val = val
-  WindowGenerator.test = test
-  WindowGenerator.example = example
+if __name__ == '__main__':
+  path = "/Users/eliassovikgunnarsson/Downloads/vix-daily_csv.csv"
+  df = pd.read_csv(path, header = 0, index_col= 0)
+  n = len(df)
+  train_df = df[0:int(n*0.7)]
+  val_df = df[int(n*0.7):int(n*0.9)]
+  test_df = df[int(n*0.9):]
 
-  def plot(self, model=None, plot_col='VIX Close', max_subplots=3):
-    inputs, labels = self.example
-    plt.figure(figsize=(12, 8))
-    plot_col_index = self.column_indices[plot_col]
-    max_n = min(max_subplots, len(inputs))
-    for n in range(max_n):
-      plt.subplot(max_n, 1, n+1)
-      plt.ylabel(f'{plot_col} [normed]')
-      plt.plot(self.input_indices, inputs[n, :, plot_col_index],
-              label='Inputs', marker='.', zorder=-10)
+  w1 = WindowGenerator(30, 1, 1, train_df=train_df, val_df=val_df, test_df=test_df)
+  print(w1)
 
-      if self.label_columns:
-        label_col_index = self.label_columns_indices.get(plot_col, None)
-      else:
-        label_col_index = plot_col_index
+  folds = w1.folds
+  print(folds.shape)
 
-      if label_col_index is None:
-        continue
-
-      plt.scatter(self.label_indices, labels[n, :, label_col_index],
-                  edgecolors='k', label='Labels', c='#2ca02c', s=64)
-      if model is not None:
-        predictions = model(inputs)
-        plt.scatter(self.label_indices, predictions[n, :, label_col_index],
-                    marker='X', edgecolors='k', label='Predictions',
-                    c='#ff7f0e', s=64)
-
-      if n == 0:
-        plt.legend()
-
-    plt.xlabel('Time [h]')
-
-  WindowGenerator.plot = plot
+  for fold in folds:
+    print(fold[0].shape)
+    print(fold[1].shape)
