@@ -113,3 +113,17 @@ class WindowGenerator():
       # And cache it for next time
       self._example = result
     return result
+  
+
+if __name__ == '__main__':
+  path = "/Users/eliassovikgunnarsson/Downloads/vix-daily_csv.csv"
+  df = pd.read_csv(path, header = 0, index_col= 0)
+  n = len(df)
+  train_df = df[0:int(n*0.7)]
+  val_df = df[int(n*0.7):int(n*0.9)]
+  test_df = df[int(n*0.9):]
+
+  w1 = WindowGenerator(30, 1, 1, train_df=train_df, val_df=val_df, test_df=test_df)
+
+  folds = w1.folds
+  print(folds.shape)
