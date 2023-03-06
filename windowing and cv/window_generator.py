@@ -124,6 +124,11 @@ if __name__ == '__main__':
   test_df = df[int(n*0.9):]
 
   w1 = WindowGenerator(30, 1, 1, train_df=train_df, val_df=val_df, test_df=test_df)
+  print(w1)
 
   folds = w1.folds
   print(folds.shape)
+
+  for fold in folds:
+    print(fold[0].shape)
+    print(fold[1].shape)
