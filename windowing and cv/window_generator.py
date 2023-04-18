@@ -2,11 +2,13 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from tscv_sliding import TimeSeriesSplitSliding
+from sklearn.preprocessing import StandardScaler
 
 class WindowGenerator():
   def __init__(self, input_width, label_width, shift,
                train_df=None, val_df=None, test_df=None,
-               label_columns=None, n_splits=5, train_splits=3, test_splits=1):
+               label_columns=None, n_splits=5, train_splits=3, test_splits=1,
+               scale=True, scaler=StandardScaler):
     
     # Store the raw data.
     self.train_df = train_df
@@ -15,6 +17,8 @@ class WindowGenerator():
     self.n_splits = n_splits
     self.train_splits = train_splits
     self.test_splits = test_splits
+    self.scale = scale
+    self.scaler = scaler
 
     # Work out the label column indices.
     self.label_columns = label_columns
@@ -88,20 +92,49 @@ class WindowGenerator():
     return self.make_dataset(self.test_df)
 
   @property
-  def folds(self):
+  def folds(self, scale=True, scaler=StandardScaler):
     '''
     Create datasets for time series sliding window cross validation
     '''
     tscv = TimeSeriesSplitSliding(n_splits=self.n_splits, train_splits=self.train_splits,
-                                  test_splits=self.n_splits, fixed_length=True)
+                                  test_splits=self.test_splits, fixed_length=True)
     cv_indices = tscv.split(self.train_df)
     cv_folds = []
     for i in range(self.n_splits):
       train_indices, val_indices = next(cv_indices)
       train = self.train_df.iloc[train_indices]
       val = self.train_df.iloc[val_indices]
+      if self.scale:
+        scale = self.scaler()
+        train = scale.fit_transform(train)
+        val = scale.transform(val)
       cv_folds.append([self.make_dataset(train), self.make_dataset(val)])
     return np.array(cv_folds).reshape((self.n_splits, 2))
+
+  @property
+  def np_folds(self):
+    '''
+    Create numpy arrays for time series sliding window cross validation
+    '''
+    tscv = TimeSeriesSplitSliding(n_splits=self.n_splits, train_splits=self.train_splits,
+                                  test_splits=self.test_splits, fixed_length=True)
+    cv_indices = tscv.split(self.train_df)
+    cv_folds = []
+    for i in range(self.n_splits):
+      train_indices, val_indices = next(cv_indices)
+      train = self.train_df.iloc[train_indices]
+      val = self.train_df.iloc[val_indices]     
+      if self.scale:
+        scale = self.scaler()
+        train = scale.fit_transform(train)
+        val = scale.transform(val)
+      train, val = self.make_dataset(train), self.make_dataset(val)
+      train_X = np.concatenate([x for x, y in train], axis=0)
+      train_y = np.concatenate([y for x, y in train], axis=0)
+      val_X = np.concatenate([x for x, y in val], axis=0)
+      val_y = np.concatenate([y for x, y in val], axis=0)
+      cv_folds.append([[train_X, train_y, val_X, val_y]])
+    return np.array(cv_folds, dtype=object).reshape((self.n_splits, 4))
 
   @property
   def example(self):
@@ -123,12 +156,7 @@ if __name__ == '__main__':
   val_df = df[int(n*0.7):int(n*0.9)]
   test_df = df[int(n*0.9):]
 
-  w1 = WindowGenerator(30, 1, 1, train_df=train_df, val_df=val_df, test_df=test_df)
+  w1 = WindowGenerator(30, 1, 1, train_df=train_df, val_df=val_df, test_df=test_df, label_columns=['VIX Close'])
   print(w1)
 
-  folds = w1.folds
-  print(folds.shape)
-
-  for fold in folds:
-    print(fold[0].shape)
-    print(fold[1].shape)
+  folds = w1.np_folds
