@@ -1,0 +1,83 @@
+\documentclass[letterpaper,10pt]{article}
+\usepackage{tabularx} % extra features for tabular environment
+\usepackage{amsmath}  % improve math presentation
+\usepackage{graphicx} % takes care of graphic including machinery
+\usepackage[margin=1in,letterpaper]{geometry} % decreases margins
+\usepackage{cite} % takes care of citations
+\usepackage[final]{hyperref} % adds hyper links inside the generated pdf file
+\hypersetup{
+	colorlinks=true,       % false: boxed links; true: colored links
+	linkcolor=blue,        % color of internal links
+	citecolor=blue,        % color of links to bibliography
+	filecolor=magenta,     % color of file links
+	urlcolor=blue         
+}
+\usepackage{blindtext}
+\usepackage[strings]{underscore}
+\usepackage{float}
+\usepackage{listings}
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{xcolor}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\usepackage{booktabs}
+\usepackage{graphicx}
+
+\lstset{style=mystyle}
+
+\newcommand{\indep}{\perp \!\!\! \perp}
+
+%++++++++++++++++++++++++++++++++++++++++
+
+\begin{document}
+
+\title{Notes:
+{\textsc{Volatility Prediction and Uncertainty Quantification using Bayesian Neural Networks}}}
+\author{ Elias Søvik Gunnarsson }
+\date{Spring, 2023}
+\maketitle
+\def\refname{Bibliography}
+\bibliographystyle{IEEEtran}
+
+
+
+\section*{Boruta Algorithm}
+In some applications, variables which have no correlation to the independent variable serve as pure noise and might introduce bias in the model and reduce the predictive performance. By applying feature selection techniques we can gain some insight int the process and can improve the computation requirement and prediction accuray \cite{Chandrashekar_2014}. \citeA{Chandrashekar_2014} classifies variable elimination methods into filer and wrapper methods, where filter methods acts as preprocessing to rank the features to be selected to be applied to a predictor. In wrapper methods predictors are wrapped on a search algorithm which finds a subset which gives the highest predictor performance. 
+\\\\
+Idea:
+
+Let $\boldsymbol{X} \in \mathbb{R}^{n \times m}$ be the original dataset with $n$ samples and $m$ features, and let $\boldsymbol{X'} \in \mathbb{R}^{n \times m}$ be the shadow dataset obtained by randomly permuting the feature values in $\boldsymbol{X}$. Let $\boldsymbol{y} \in \mathbb{R}^n$ be the target variable.
+
+\begin{enumerate}
+    \item $\boldsymbol{X'} = permute(\boldsymbol{X})$
+    \item Train a random forest algorithm on $\boldsymbol{X}$ and calculate the feature importance scores, $\text{imp}_i$, for each feature $i$.
+    \item For each feature $i$, compare its importance score $\text{imp}_i$ to the maximum importance score $\text{imp}'_i$ in the shadow dataset.
+    If $\text{imp}_i \geq \text{imp}'_i$, mark feature $i$ as confirmed and add it to the final feature set $\boldsymbol{F}$. Otherwise, mark feature $i$ as tentative and keep it for further evaluation.
+    \item Repeat steps 1-3 until all features have been either confirmed or rejected. At each iteration, use the confirmed features $\boldsymbol{F}$ as input to train the random forest algorithm.
+    \item For each tentative feature $i$, perform the shadow feature test by randomly permuting the feature values in $\boldsymbol{X'}$ and calculating the feature importance scores, $\text{imp}'_i$.
+    If $\text{imp}_i \geq \max(\text{imp}'_i)$, mark feature $i$ as confirmed and add it to $\boldsymbol{F}$. Otherwise, mark feature $i$ as rejected and remove it from consideration.
+    \item Return the final set of confirmed features $\boldsymbol{F}$.
+\end{enumerate}
+\end{document}
