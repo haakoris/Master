@@ -35,3 +35,15 @@ The change from earlier is reflected in two steps:
 * The `DistributionLambda` uses the first output as the mean, and the second as the standard deviation. It is accomplished by using `t[..., 0:1]` - corresponding to the mean - and `t[..., 1:2]`, which equates to taking the second output as $\sigma$.
 
 To ensure a non-negative scale, a small constant of `1e-3` is added to the `softmax` output. 
+___
+# Modelling aleatoric uncertainty with regression
+Using the `DistributionLambda` layer in a network:
+```Python
+model = Sequential([
+    Dense(units=1, input_shape=(1,)),
+    tfp.layers.DistributionLambda(
+        lambda t: tfp.distributions.Independent(tf.distriubtions.Normal(loc=t, scale=1))
+    )
+])
+```
+Output from `Dense` layer used to parameterize a normal distribution with constant variacne and learned mean. Here, the output is a distribution. 
