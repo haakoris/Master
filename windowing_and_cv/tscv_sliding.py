@@ -7,8 +7,10 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 rng = np.random.RandomState(1338)
-cmap_data = plt.cm.Paired
-cmap_cv = plt.cm.coolwarm
+cmap_data = plt.cm.binary
+cmap_cv = plt.cm.binary
+plt.rcParams["font.family"] = "serif"
+
 
 def plot_cv_indices(cv, X, ax, lw=10, name=None):
     """Create a sample plot for indices of a cross-validation object."""
@@ -19,7 +21,7 @@ def plot_cv_indices(cv, X, ax, lw=10, name=None):
         indices = np.array([np.nan] * len(X))
         indices[tt] = 1
         indices[tr] = 0
-
+        ii = ii + 1
         # Visualize the results
         ax.scatter(
             range(len(indices)),
@@ -33,17 +35,17 @@ def plot_cv_indices(cv, X, ax, lw=10, name=None):
             )
         
     # Formatting
-    yticklabels = list(range(cv.n_splits))
+    yticklabels = list(range(1, cv.n_splits + 1))
     ax.set(
-        yticks=np.arange(cv.n_splits) + 0.5,
+        yticks=np.arange(1, cv.n_splits + 1) + 0.5,
         yticklabels=yticklabels,
         xlabel="Sample index",
         ylabel="CV iteration",
-        ylim=[cv.n_splits + 0.2, -0.2],
+        ylim=[cv.n_splits + 0.2 + 1, 0.8],
         xlim=[0,n_samples + n_samples * 0.05],
     )
     if name is None:
-        ax.set_title("{}".format(type(cv).__name__), fontsize=15)
+        ax.set_title("{}".format(type(cv).__name__))
     else:
         ax.set_title(name, fontsize=15)
     return ax
@@ -119,7 +121,18 @@ if __name__ == "__main__":
     path = "/Users/eliassovikgunnarsson/Downloads/vix-daily_csv.csv"
     df = pd.read_csv(path, header = 0, index_col= 0)
     tscv = TimeSeriesSplitSliding(n_splits=5, train_splits=2, test_splits = 1, fixed_length=True)
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(1,2)
     X = df['VIX Close']
-    plot_cv_indices(tscv, X, ax, name="Sliding Window")
+
+    tscv2 = TimeSeriesSplit(n_splits=5)
+
+
+
+
+    plot_cv_indices(tscv2, X, ax[0], name="Expanding Window Cross Validation")
+
+    plot_cv_indices(tscv, X, ax[1], name="Sliding Window Cross Validation")
+    ax[1].set_ylabel("")
+
+    
     plt.show()
